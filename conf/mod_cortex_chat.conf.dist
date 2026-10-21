@@ -1,0 +1,136 @@
+[worldserver]
+
+########################################
+# mod-cortex-chat: bots answer real players' chat with an LLM
+########################################
+#
+#    CortexChat.Enable
+#        Description: Bots answer real players' whispers, /say, party, guild and General chat through an LLM, in
+#                     character and from what they're doing (persona, zone, quests, Cortex goal). Playerbots' own
+#                     canned replies to real players are left out for the chat types turned on below.
+#        Default:     0 - off
+#                     1 - on (needs an API key for anthropic and openai)
+
+CortexChat.Enable = 0
+
+#    CortexChat.Provider
+#        Description: anthropic (Messages API), openai (any /v1/chat/completions endpoint: OpenAI, OpenRouter,
+#                     vLLM, LM Studio ...) or ollama (/api/chat, no key).
+#    CortexChat.Url
+#        Description: The full endpoint URL.
+#                     anthropic: https://api.anthropic.com/v1/messages
+#                     openai:    https://api.openai.com/v1/chat/completions
+#                     ollama:    http://<host>:11434/api/chat
+#    CortexChat.Model
+#        Description: Model name as the provider lists it.
+#    CortexChat.ApiKey
+#        Description: Leave empty here. The worldserver Deployment sets it from the k8s Secret
+#                     wow-cortex-chat (env AC_CORTEX_CHAT_API_KEY), which overrides this value.
+#    CortexChat.MaxTokens
+#        Description: Output token cap per reply. Replies are a line or two of chat.
+
+CortexChat.Provider = "anthropic"
+CortexChat.Url = "https://api.anthropic.com/v1/messages"
+CortexChat.Model = "claude-haiku-5-5"
+CortexChat.ApiKey = ""
+CortexChat.MaxTokens = 300
+
+#    CortexChat.Anthropic.Thinking
+#        Description: thinking.type sent to Anthropic: "disabled", "adaptive", or "" to leave it out. Claude Haiku 5.5
+#                     accepts "disabled" at effort high or below; Opus 5.5 and Sonnet 5.5 reject it (use "").
+#    CortexChat.Anthropic.Effort
+#        Description: output_config.effort: low, medium, high, or "" to leave it out.
+#    CortexChat.OpenAI.MaxTokensField
+#        Description: Name of the output cap field for openai: max_tokens, or max_completion_tokens for newer OpenAI
+#                     models.
+
+CortexChat.Anthropic.Thinking = "disabled"
+CortexChat.Anthropic.Effort = "low"
+CortexChat.OpenAI.MaxTokensField = "max_tokens"
+
+#    CortexChat.Workers
+#        Description: Threads making requests (read at startup).
+#    CortexChat.ConnectTimeoutMs, CortexChat.TimeoutMs
+#        Description: HTTP connect and read timeouts.
+#    CortexChat.Retries, CortexChat.MaxRetryWaitMs
+#        Description: More tries after 408, 429, 5xx or a connection error, waiting retry-after (or 1 s, 2 s ...);
+#                     no retry when the wait would be longer than MaxRetryWaitMs.
+#    CortexChat.CaCertFile
+#        Description: CA bundle for HTTPS; when missing, OpenSSL's default paths.
+
+CortexChat.Workers = 2
+CortexChat.ConnectTimeoutMs = 5000
+CortexChat.TimeoutMs = 20000
+CortexChat.Retries = 1
+CortexChat.MaxRetryWaitMs = 8000
+CortexChat.CaCertFile = "/etc/ssl/certs/ca-certificates.crt"
+
+#    CortexChat.MaxRequestsPerMinute, CortexChat.MaxRequestsPerDay
+#        Description: Cost guard: messages past these go unanswered (UTC day).
+#    CortexChat.QueueSize
+#        Description: Requests waiting for a worker; more are dropped.
+#    CortexChat.PlayerCooldownMs
+#        Description: A player's messages closer together than this start no new request.
+#    CortexChat.MaxReplyAgeMs
+#        Description: A reply that would arrive later than this after the message is dropped.
+
+CortexChat.MaxRequestsPerMinute = 20
+CortexChat.MaxRequestsPerDay = 3000
+CortexChat.QueueSize = 32
+CortexChat.PlayerCooldownMs = 1500
+CortexChat.MaxReplyAgeMs = 45000
+
+#    CortexChat.ReadDelayMs, CortexChat.TypingMsPerChar, CortexChat.MaxTypingMs
+#        Description: A reply goes out no sooner than ReadDelayMs + its length x TypingMsPerChar (at most MaxTypingMs)
+#                     after the message, as if typed.
+#    CortexChat.MaxReplyLength
+#        Description: Characters per chat line (40-255); a longer reply is cut into two lines, the rest dropped.
+
+CortexChat.ReadDelayMs = 1500
+CortexChat.TypingMsPerChar = 50
+CortexChat.MaxTypingMs = 10000
+CortexChat.MaxReplyLength = 250
+
+#    CortexChat.Whisper.Enable
+#        Description: A real player's whisper to a bot is always answered, unless it's a playerbots command from
+#                     someone allowed to give the bot commands (a question is never taken as a command).
+#    CortexChat.Say.Enable, CortexChat.Say.Range, CortexChat.Say.ReplyChance
+#        Description: /say near bots of the speaker's faction: the bot the player targets or names answers;
+#                     otherwise, by ReplyChance (%), the nearest bot may (the model can still pass).
+#    CortexChat.Party.Enable, CortexChat.Party.ReplyChance
+#    CortexChat.Guild.Enable, CortexChat.Guild.ReplyChance
+#        Description: Party (and raid) or guild chat: the bot named answers; otherwise, by ReplyChance (%), a random
+#                     bot of the party or guild may. In a party of just the player and one bot, the bot answers
+#                     everything said in party chat.
+#    CortexChat.Channel.Enable, CortexChat.Channel.Ids
+#        Description: Chat channels by ChatChannels.dbc id, comma separated: 1 General, 2 Trade, 22 LocalDefense,
+#                     26 LookingForGroup.
+#    CortexChat.Channel.QuestionChance, CortexChat.Channel.ReplyChance
+#        Description: Chance (%) that one bot on the channel takes up an unaddressed question (bots at least the
+#                     asker's level first), or any other message. A named bot always answers.
+
+CortexChat.Whisper.Enable = 1
+CortexChat.Say.Enable = 1
+CortexChat.Say.Range = 25
+CortexChat.Say.ReplyChance = 50
+CortexChat.Party.Enable = 1
+CortexChat.Party.ReplyChance = 70
+CortexChat.Guild.Enable = 1
+CortexChat.Guild.ReplyChance = 40
+CortexChat.Channel.Enable = 1
+CortexChat.Channel.Ids = "1"
+CortexChat.Channel.QuestionChance = 70
+CortexChat.Channel.ReplyChance = 10
+
+#    CortexChat.History.Lines, CortexChat.History.Minutes
+#        Description: Earlier lines of the same conversation (whisper or /say pair, party, guild, channel) given to
+#                     the model.
+#    CortexChat.ExtraInstructions
+#        Description: Appended to the built-in system prompt (realm flavour, house rules).
+#    CortexChat.LogPrompts
+#        Description: Log every prompt and raw reply (module.cortexchat, info). For tuning only.
+
+CortexChat.History.Lines = 8
+CortexChat.History.Minutes = 20
+CortexChat.ExtraInstructions = ""
+CortexChat.LogPrompts = 0
