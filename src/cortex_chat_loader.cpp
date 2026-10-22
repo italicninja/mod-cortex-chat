@@ -15,7 +15,7 @@ constexpr char const* CORTEXCHAT_VERSION = "v0.2.0";
 
 namespace
 {
-    // Tells each real player at login that the realm runs this module, like mod-playerbots does. GPL-2.0: the link
+    // Tells each real player at login that the realm runs this module, like mod-cortex does. GPL-2.0: the link
     // must lead to the module's public source.
     class CortexChatLoginScript : public PlayerScript
     {

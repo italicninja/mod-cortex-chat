@@ -12,18 +12,14 @@
 #include <unordered_map>
 
 #include "Cortex.h"
+#include "CortexBots.h"
 #include "DBCStores.h"
-#include "Field.h"
 #include "Group.h"
 #include "Guild.h"
 #include "GuildMgr.h"
 #include "Log.h"
 #include "ObjectMgr.h"
 #include "Player.h"
-#include "PlayerbotAI.h"
-#include "PlayerbotTextMgr.h"
-#include "PlayerbotsDatabase.h"
-#include "QueryResult.h"
 #include "QuestDef.h"
 #include "SharedDefines.h"
 
@@ -59,7 +55,7 @@ namespace
     std::string AreaName(uint32 areaId)
     {
         AreaTableEntry const* area = sAreaTableStore.LookupEntry(areaId);
-        return area ? PlayerbotAI::GetLocalizedAreaName(area) : std::string();
+        return CortexBots::AreaName(area);
     }
 
     std::string Professions(Player const* bot)
@@ -156,15 +152,7 @@ namespace
 
 void CortexChatPrompt::LoadPersonas()
 {
-    sPersonas.clear();
-    QueryResult result = PlayerbotsDatabase.Query("SELECT persona, description FROM cortex_personas");
-    if (!result)
-        return;
-    do
-    {
-        Field* fields = result->Fetch();
-        sPersonas[fields[0].Get<std::string>()] = fields[1].Get<std::string>();
-    } while (result->NextRow());
+    sPersonas = CortexBots::PersonaDescriptions();
 }
 
 std::string CortexChatPrompt::System(std::string const& extra)
@@ -206,7 +194,7 @@ std::string CortexChatPrompt::AboutBot(Player* bot)
     Guild* guild = bot->GetGuildId() ? sGuildMgr->GetGuildById(bot->GetGuildId()) : nullptr;
     out << "- Guild: " << (guild ? "<" + guild->GetName() + ">" : std::string("none")) << ".\n";
 
-    std::string persona = PlayerbotTextMgr::instance().GetPersona(bot);
+    std::string persona = CortexBots::Persona(bot);
     if (!persona.empty())
     {
         auto it = sPersonas.find(persona);

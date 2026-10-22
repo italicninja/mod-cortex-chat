@@ -66,8 +66,7 @@ flowchart LR
 | Needs | For |
 |---|---|
 | mod-cortex `CortexChatHook` | Keeping the bot body from handling the chat this module answers |
-| mod-cortex bot personas | The bot's persona and the `cortex_personas` table in `acore_cortex` (descriptions are read at startup) |
-| mod-cortex `BotTelemetry` | `chat` telemetry rows |
+| mod-cortex `CortexBots` | Telling bots from real players, the body's chat commands and who may give them, saying a line, the bot's persona (`cortex_personas`, read at startup), area names, `chat` telemetry rows |
 | mod-cortex `Cortex::Describe` | What the bot is doing |
 | OpenSSL | HTTPS to the provider |
 

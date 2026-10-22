@@ -4,11 +4,11 @@
  */
 
 #include "Channel.h"
+#include "CortexBots.h"
 #include "CortexChat.h"
+#include "CortexChatHook.h"
 #include "Player.h"
 #include "PlayerScript.h"
-#include "PlayerbotAI.h"
-#include "CortexChatHook.h"
 #include "ScriptMgr.h"
 #include "SharedDefines.h"
 #include "WorldScript.h"
@@ -16,7 +16,7 @@
 namespace
 {
     // Real players only: bots' own chat never asks the LLM, nor does addon traffic.
-    bool FromPlayer(Player* player, uint32 lang) { return lang != LANG_ADDON && IsRealPlayer(player); }
+    bool FromPlayer(Player* player, uint32 lang) { return lang != LANG_ADDON && CortexBots::IsRealPlayer(player); }
 
     class CortexChatPlayerScript : public PlayerScript
     {

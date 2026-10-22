@@ -13,7 +13,7 @@ class Player;
 // Prompt text from game state. World thread, while maps aren't updating (chat handling).
 namespace CortexChatPrompt
 {
-    // Persona descriptions from cortex_personas (playerbots DB); at startup.
+    // Persona descriptions from cortex_personas (Cortex database); at startup.
     void LoadPersonas();
 
     // The fixed rules, plus the configured extra instructions.

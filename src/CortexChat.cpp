@@ -19,21 +19,16 @@
 #include <unordered_set>
 #include <vector>
 
-#include "BotTelemetry.h"
 #include "Channel.h"
 #include "ChannelMgr.h"
-#include "ChatTriggerContext.h"
 #include "Config.h"
+#include "CortexBots.h"
 #include "CortexChatPrompt.h"
 #include "Group.h"
 #include "Log.h"
 #include "Map.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
-#include "PlayerbotAI.h"
-#include "PlayerbotAIConfig.h"
-#include "PlayerbotSecurity.h"
-#include "Playerbots.h"
 #include "Random.h"
 
 using namespace CortexChat;
@@ -110,7 +105,7 @@ namespace
         uint32 replies = 0;
     } sStats;
 
-    // Playerbots' chat command names (ChatTriggerContext), lowercase.
+    // The bot body's chat command names, lowercase.
     std::unordered_set<std::string> sCommands;
 
     // --- Chat history per conversation ----------------------------------------------------------------------------
@@ -164,21 +159,15 @@ namespace
 
     // --- Which messages are chat ----------------------------------------------------------------------------------
 
-    bool IsBot(Player* player)
-    {
-        PlayerbotAI* botAI = player ? GET_PLAYERBOT_AI(player) : nullptr;
-        return botAI && botAI->IsBotAI();
-    }
-
-    // Would playerbots run this as a command from someone allowed to command the bot? Mirrors PlayerbotAI::
-    // HandleCommand and ExternalEventHelper::ParseChatCommand (the text, then each shorter run of its leading words,
-    // as a command name), except that a question is talk: "who are you?" isn't the "who" command.
+    // Would the bot body run this as a command from someone allowed to command the bot? Mirrors how the body parses
+    // chat commands (the text, then each shorter run of its leading words, as a command name), except that a
+    // question is talk: "who are you?" isn't the "who" command.
     bool LooksLikeCommand(std::string const& text)
     {
         std::string lower = Lower(text);
-        if (!sPlayerbotAIConfig.CommandPrefix.empty())
-            return lower.starts_with(Lower(sPlayerbotAIConfig.CommandPrefix));
-        if (!sPlayerbotAIConfig.CommandSeparator.empty() && text.find(sPlayerbotAIConfig.CommandSeparator) != std::string::npos)
+        if (!CortexBots::CommandPrefix().empty())
+            return lower.starts_with(Lower(CortexBots::CommandPrefix()));
+        if (!CortexBots::CommandSeparator().empty() && text.find(CortexBots::CommandSeparator()) != std::string::npos)
             return true;
         if (lower.find("|h") != std::string::npos)  // item, quest and spell links
             return true;
@@ -197,16 +186,15 @@ namespace
         }
     }
 
-    // Chat (ours), or a command (playerbots')? Someone who can't command the bot gets chat for anything but the few
-    // commands everyone may give (PlayerbotAI::IsAllowedCommand); playerbots would only refuse the rest.
+    // Chat (ours), or a command (the body's)? Someone who can't command the bot gets chat for anything but the few
+    // commands everyone may give; the body would only refuse the rest.
     bool IsChat(Player* bot, Player* from, std::string const& msg)
     {
-        PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
-        if (!botAI || !botAI->IsBotAI() || msg.empty() || msg.starts_with("BOT\t"))
+        if (!CortexBots::IsBot(bot) || msg.empty() || msg.starts_with("BOT\t"))
             return false;
-        if (botAI->IsAllowedCommand(msg))
+        if (CortexBots::IsAllowedCommand(bot, msg))
             return false;
-        if (botAI->GetSecurity()->LevelFor(from) < PLAYERBOT_SECURITY_ALLOW_ALL)
+        if (!CortexBots::TakesCommandsFrom(bot, from))
             return true;
         return !LooksLikeCommand(msg);
     }
@@ -456,8 +444,7 @@ namespace
     {
         Job const& job = reply.job;
         Player* bot = ObjectAccessor::FindPlayer(job.bot);
-        PlayerbotAI* botAI = bot ? GET_PLAYERBOT_AI(bot) : nullptr;
-        if (!botAI)
+        if (!CortexBots::IsBot(bot))
         {
             ++sStats.dropped;
             return false;
@@ -469,16 +456,16 @@ namespace
         {
             case Kind::WHISPER:
                 if (Player* to = ObjectAccessor::FindConnectedPlayer(job.from))
-                    said = botAI->Whisper(part, to->GetName());
+                    said = CortexBots::Whisper(bot, part, to->GetName());
                 break;
             case Kind::SAY:
-                said = botAI->Say(part);
+                said = CortexBots::Say(bot, part);
                 break;
             case Kind::PARTY:
-                said = botAI->SayToParty(part);
+                said = CortexBots::SayToParty(bot, part);
                 break;
             case Kind::GUILD:
-                said = botAI->SayToGuild(part);
+                said = CortexBots::SayToGuild(bot, part);
                 break;
             case Kind::CHANNEL:
                 // Channel::Say leaves out a bot that isn't on the channel (it left the zone meanwhile).
@@ -486,7 +473,7 @@ namespace
                     if (Channel* channel = channels->GetChannel(job.channelName, bot, false))
                     {
                         channel->Say(bot->GetGUID(), part, LANG_UNIVERSAL);
-                        BotTelemetry::instance().Chat(botAI, "channel", part);
+                        CortexBots::ChatTelemetry(bot, "channel", part);
                         said = true;
                     }
                 break;
@@ -603,9 +590,8 @@ void CortexChat::Start()
 {
     CortexChatPrompt::LoadPersonas();
 
-    ChatTriggerContext triggers;
-    for (std::string const& name : triggers.supports())
-        sCommands.insert(Lower(name));
+    for (std::string& name : CortexBots::CommandNames())
+        sCommands.insert(std::move(name));
 
     sStop = false;
     for (uint32 i = 0; i < Cfg()->workers; ++i)
@@ -698,7 +684,7 @@ void CortexChat::Update()
 void CortexChat::OnWhisper(Player* from, Player* bot, std::string const& msg)
 {
     auto cfg = Cfg();
-    if (!cfg->enabled || !cfg->whisper || !IsBot(bot) || !IsChat(bot, from, msg))
+    if (!cfg->enabled || !cfg->whisper || !CortexBots::IsBot(bot) || !IsChat(bot, from, msg))
         return;
     std::string scope = "w:" + std::to_string(bot->GetGUID().GetCounter()) + ":" +
                         std::to_string(from->GetGUID().GetCounter());
@@ -717,7 +703,7 @@ void CortexChat::OnSay(Player* from, std::string const& msg)
     for (auto const& ref : from->GetMap()->GetPlayers())
     {
         Player* player = ref.GetSource();
-        if (!player || player == from || !IsBot(player) || player->GetTeamId() != from->GetTeamId() ||
+        if (!player || player == from || !CortexBots::IsBot(player) || player->GetTeamId() != from->GetTeamId() ||
             !player->InSamePhase(from) || !player->IsWithinDistInMap(from, cfg->sayRange))
             continue;
         candidates.push_back(player);
@@ -753,7 +739,7 @@ void CortexChat::OnParty(Player* from, Group* group, std::string const& msg)
     for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
     {
         Player* member = ref->GetSource();
-        if (member && member != from && member->IsInWorld() && IsBot(member) && IsChat(member, from, msg))
+        if (member && member != from && member->IsInWorld() && CortexBots::IsBot(member) && IsChat(member, from, msg))
             candidates.push_back(member);
     }
     std::string scope = "p:" + std::to_string(group->GetGUID().GetCounter());
@@ -784,7 +770,7 @@ void CortexChat::OnGuild(Player* from, std::string const& msg)
     std::vector<Player*> candidates;
     for (auto const& [guid, player] : ObjectAccessor::GetPlayers())
         if (player && player != from && player->GetGuildId() == from->GetGuildId() && player->IsInWorld() &&
-            IsBot(player) && IsChat(player, from, msg))
+            CortexBots::IsBot(player) && IsChat(player, from, msg))
             candidates.push_back(player);
     std::string scope = "g:" + std::to_string(from->GetGuildId());
     bool addressed = false;
@@ -806,14 +792,14 @@ void CortexChat::OnChannel(Player* from, Channel* channel, std::string const& ms
     // Bots on the channel: the zone's for General, Trade and LocalDefense (bots join their zone's channels; Channel
     // keeps its member list private), anyone's for the realm-wide ones (LookingForGroup ...). For a question, bots at least the asker's level
     // first (they've been there).
+    // ChatChannels.dbc ids of the realm-wide ones: WorldDefense, GuildRecruitment, LookingForGroup.
     uint32 channelId = channel->GetChannelId();
-    bool zoneChannel = channelId != ChatChannelId::LOOKING_FOR_GROUP && channelId != ChatChannelId::WORLD_DEFENSE &&
-                       channelId != ChatChannelId::GUILD_RECRUITMENT;
+    bool zoneChannel = channelId != 23 && channelId != 25 && channelId != 26;
     std::vector<Player*> candidates, seasoned;
     for (auto const& [guid, player] : ObjectAccessor::GetPlayers())
     {
         if (!player || player == from || player->GetTeamId() != from->GetTeamId() || !player->IsInWorld() ||
-            !IsBot(player) || (zoneChannel && player->GetZoneId() != from->GetZoneId()))
+            !CortexBots::IsBot(player) || (zoneChannel && player->GetZoneId() != from->GetZoneId()))
             continue;
         candidates.push_back(player);
         if (player->GetLevel() >= from->GetLevel())
@@ -841,7 +827,7 @@ void CortexChat::OnChannel(Player* from, Channel* channel, std::string const& ms
 bool CortexChat::Claims(Player* bot, Player* from, uint32 type, std::string const& msg)
 {
     auto cfg = Cfg();
-    if (!cfg->enabled || !bot || !from || IsBot(from))
+    if (!cfg->enabled || !bot || !from || CortexBots::IsBot(from))
         return false;
     switch (type)
     {
