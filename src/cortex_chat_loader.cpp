@@ -11,7 +11,7 @@
 void AddCortexChatScripts();
 
 // The version this source is tagged with in https://github.com/italicninja/mod-cortex-chat (bump it with each tag).
-constexpr char const* CORTEXCHAT_VERSION = "v0.1.0";
+constexpr char const* CORTEXCHAT_VERSION = "v0.2.0";
 
 namespace
 {
