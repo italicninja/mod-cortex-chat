@@ -7,7 +7,7 @@
 Whisper a bot, talk near it, ask in General: it answers as itself, from what it is and what it is doing right now.
 
 ![AzerothCore](https://img.shields.io/badge/AzerothCore-3.3.5a-1f6feb)
-![mod-playerbots](https://img.shields.io/badge/mod--playerbots-wowproject%20series-8250df)
+![mod-cortex](https://img.shields.io/badge/needs-mod--cortex-8250df)
 ![LLM](https://img.shields.io/badge/LLM-Anthropic%20%7C%20OpenAI--compatible%20%7C%20Ollama-d97757)
 ![License](https://img.shields.io/badge/license-GPL--2.0-green)
 
@@ -23,7 +23,7 @@ before it answers.</sub>
 | | |
 |---|---|
 | **Real players only** | Only chat from real players gets a reply. Bots never chat to each other through the model. |
-| **In character** | The prompt carries the bot's name, race, class, level, guild, playerbots persona, zone, what Cortex says it is doing, its quest log, professions, money and group. |
+| **In character** | The prompt carries the bot's name, race, class, level, guild, persona, zone, what Cortex says it is doing, its quest log, professions, money and group. |
 | **Every channel** | Whispers always get an answer, within the rate limits. /say within 25 yd, party and raid, guild and General reply by chance (see the config). |
 | **Feels typed** | A reading delay, then a typing delay per character. Long answers are cut to one chat line and cleaned of markdown. |
 | **Remembers the talk** | The last 8 lines per player and bot, for 20 minutes. |
@@ -34,15 +34,16 @@ before it answers.</sub>
 ```mermaid
 flowchart LR
     A[Real player:<br>whisper, say, party,<br>guild, General] --> B{Who answers?<br>chance, cooldown,<br>rate limits}
-    B -- skip --> X[playerbots' own<br>handling]
+    B -- skip --> X[the bot body's own<br>handling]
     B -- this bot --> C[Prompt: persona, zone,<br>Cortex goal, quests,<br>money, history]
     C --> D[Queue → worker thread<br>HTTPS to the LLM]
     D --> E[Clean for game chat]
     E --> F[World thread:<br>typing delay, then<br>the bot says it]
 ```
 
-- **Playerbots stays out of it.** A chat filter hook (playerbots patch `0065`) stops playerbots from running a
-  real player's whisper as a command, refusing it, or adding its canned reply when this module answers.
+- **The bot body stays out of it.** mod-cortex's chat hook (`CortexChatHook`) keeps the body from running a real
+  player's whisper as a command, refusing it, or adding its canned reply when this module answers. Real commands
+  from someone allowed to give them still reach the body.
 - **Off the map threads.** HTTP calls run on worker threads (cpp-httplib over OpenSSL, nlohmann/json). The reply is
   said on the world thread, so a slow provider never stalls the game.
 - **Providers.** The Anthropic Messages API is the default (`claude-haiku-5-5`). Any OpenAI-compatible Chat
@@ -50,9 +51,10 @@ flowchart LR
 
 ## Install
 
-1. Build AzerothCore 3.3.5a with mod-playerbots carrying the wowproject patch series, and
-   [mod-cortex](https://github.com/italicninja/mod-cortex) (see [Requirements](#requirements)).
-2. Clone into `azerothcore-wotlk/modules/mod-cortex-chat` and build statically (`-DMODULES=static`).
+1. Build AzerothCore 3.3.5a with [mod-cortex](https://github.com/italicninja/mod-cortex), following its install
+   steps (see [Requirements](#requirements)).
+2. Clone into `azerothcore-wotlk/modules/mod-cortex-chat` and build statically (`-DMODULES=static`); it includes
+   mod-cortex's headers directly.
    `mod-cortex-chat.cmake` links OpenSSL, which the build needs installed.
 3. Copy `conf/mod_cortex_chat.conf.dist` to `etc/modules/mod_cortex_chat.conf` and set `CortexChat.Enable = 1`.
 4. Put the API key in the environment as `AC_CORTEX_CHAT_API_KEY` (on Kubernetes, from a Secret). It overrides
@@ -63,11 +65,10 @@ flowchart LR
 
 | Needs | For |
 |---|---|
-| mod-playerbots `0053-extension-hooks` | PlayerbotsExtensions |
-| mod-playerbots `0065-chat-filter-hook` | Keeping playerbots from handling the chat this module answers |
-| mod-playerbots `0001-bot-personas` | `PlayerbotTextMgr::GetPersona` and the `ai_playerbot_personas` table (descriptions are read at startup) |
-| mod-playerbots `0003-bot-telemetry` | `BotTelemetry::Chat` |
-| mod-cortex | `Cortex::Describe` (what the bot is doing) |
+| mod-cortex `CortexChatHook` | Keeping the bot body from handling the chat this module answers |
+| mod-cortex bot personas | The bot's persona and the `cortex_personas` table in `acore_cortex` (descriptions are read at startup) |
+| mod-cortex `BotTelemetry` | `chat` telemetry rows |
+| mod-cortex `Cortex::Describe` | What the bot is doing |
 | OpenSSL | HTTPS to the provider |
 
 `deps/` vendors cpp-httplib v0.62.0 and nlohmann/json v3.12.0, both MIT and unmodified (see `deps/README.md`).

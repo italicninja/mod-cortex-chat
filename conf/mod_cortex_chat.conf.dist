@@ -6,7 +6,7 @@
 #
 #    CortexChat.Enable
 #        Description: Bots answer real players' whispers, /say, party, guild and General chat through an LLM, in
-#                     character and from what they're doing (persona, zone, quests, Cortex goal). Playerbots' own
+#                     character and from what they're doing (persona, zone, quests, Cortex goal). The bot body's own
 #                     canned replies to real players are left out for the chat types turned on below.
 #        Default:     0 - off
 #                     1 - on (needs an API key for anthropic and openai)
@@ -92,7 +92,7 @@ CortexChat.MaxTypingMs = 10000
 CortexChat.MaxReplyLength = 250
 
 #    CortexChat.Whisper.Enable
-#        Description: A real player's whisper to a bot is always answered, unless it's a playerbots command from
+#        Description: A real player's whisper to a bot is always answered, unless it's a bot command from
 #                     someone allowed to give the bot commands (a question is never taken as a command).
 #    CortexChat.Say.Enable, CortexChat.Say.Range, CortexChat.Say.ReplyChance
 #        Description: /say near bots of the speaker's faction: the bot the player targets or names answers;
