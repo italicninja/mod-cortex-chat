@@ -79,7 +79,7 @@ namespace CortexChat
     void OnGuild(Player* from, std::string const& msg);
     void OnChannel(Player* from, Channel* channel, std::string const& msg);
 
-    // PlayerbotsExtensions::ChatFilter (patches/mod-playerbots/0065-chat-filter-hook.patch).
+    // CortexChatHook::ChatFilter (mod-cortex/src/Body/Script/CortexChatHook.h).
     bool Claims(Player* bot, Player* from, uint32 type, std::string const& msg);
     bool Silences(Player* bot, uint32 type);
 }

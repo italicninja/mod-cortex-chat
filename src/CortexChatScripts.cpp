@@ -8,7 +8,7 @@
 #include "Player.h"
 #include "PlayerScript.h"
 #include "PlayerbotAI.h"
-#include "PlayerbotsExtensions.h"
+#include "CortexChatHook.h"
 #include "ScriptMgr.h"
 #include "SharedDefines.h"
 #include "WorldScript.h"
@@ -87,5 +87,5 @@ void AddCortexChatScripts()
 {
     new CortexChatPlayerScript();
     new CortexChatWorldScript();
-    PlayerbotsExtensions::AddChatFilter({CortexChat::Claims, CortexChat::Silences});
+    CortexChatHook::AddChatFilter({CortexChat::Claims, CortexChat::Silences});
 }

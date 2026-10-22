@@ -157,7 +157,7 @@ namespace
 void CortexChatPrompt::LoadPersonas()
 {
     sPersonas.clear();
-    QueryResult result = PlayerbotsDatabase.Query("SELECT persona, description FROM ai_playerbot_personas");
+    QueryResult result = PlayerbotsDatabase.Query("SELECT persona, description FROM cortex_personas");
     if (!result)
         return;
     do
